@@ -1,4 +1,3 @@
--- Второй скрипт: библиотека Linoria (полностью)
 local InputService = game:GetService('UserInputService');
 local TextService = game:GetService('TextService');
 local CoreGui = game:GetService('CoreGui');
@@ -62,8 +61,6 @@ local Library = {
         PositionY = 40;
     };
 };
-
-_G.UIUnlocked = false;
 
 Library.KeyPickerList = {};
 
@@ -232,10 +229,6 @@ function Library:MakeDraggable(Instance, Cutoff, IsWindow)
     Instance.Active = true;
     Instance.InputBegan:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-            if IsWindow and InputService.TouchEnabled and not _G.UIUnlocked then
-                return
-            end
-
             local StartPos = Instance.Position
             local DragStart = Input.Position
 
@@ -2870,8 +2863,6 @@ do
         return Funcs[Key](...);
     end;
 end;
-
--- Notification system - появляются сверху, уходят вниз
 do
     Library.NotificationArea = Library:Create('Frame', {
         BackgroundTransparency = 1;
@@ -2884,7 +2875,6 @@ do
         Padding = UDim.new(0, 4);
         FillDirection = Enum.FillDirection.Vertical;
         SortOrder = Enum.SortOrder.LayoutOrder;
-        VerticalAlignment = Enum.VerticalAlignment.Top;
         Parent = Library.NotificationArea;
     });
     local function Library_UpdateNotifAlignment()
@@ -2910,129 +2900,277 @@ do
     Library.UpdateNotifAlignment = Library_UpdateNotifAlignment
     Library_UpdateNotifAlignment()
 
-    function Library:Notify(Text, Time)
-        local cfg     = Library.NotifyConfig
-        local barSide = cfg.BarSide   or 'Left'    
-        local align   = cfg.Alignment or 'Left'    
+    local WatermarkOuter = Library:Create('Frame', {
+        BorderColor3 = Color3.new(0, 0, 0);
+        Position = UDim2.new(0, 100, 0, -25);
+        Size = UDim2.new(0, 213, 0, 20);
+        ZIndex = 200;
+        Visible = false;
+        Parent = ScreenGui;
+    });
 
-        local XSize, YSize = Library:GetTextBounds(Text, Library.Font, Library.FontSize)
-        YSize = YSize + 7
-
-        local BAR_THIN  = 3   
-        local BAR_THICK = 3   
-
-        local innerPosX  = (barSide == 'Left')   and 1 or 1
-        local innerPosY  = (barSide == 'Top')    and BAR_THICK or 1
-        local innerSizeW = (barSide == 'Left' or barSide == 'Right') and -2 or -2
-        local innerSizeH = (barSide == 'Top' or barSide == 'Bottom') and -(BAR_THICK + 1) or -2
-
-        local labelPosX  = (barSide == 'Left')  and BAR_THIN + 2 or 4
-        local labelSizeW = (barSide == 'Left' or barSide == 'Right') and -(BAR_THIN + 4) or -4
-
-        local outerAnchor = Vector2.new(0, 0)
-        if align == 'Center' then
-            outerAnchor = Vector2.new(0.5, 0)
-        elseif align == 'Right' then
-            outerAnchor = Vector2.new(1, 0)
-        end
-
-        local childrenCount = #Library.NotificationArea:GetChildren()
-
-        local NotifyOuter = Library:Create('Frame', {
-            BackgroundTransparency = 1;
-            AnchorPoint = outerAnchor;
-            BorderColor3 = Color3.new(0, 0, 0);
-            LayoutOrder = childrenCount + 1;
-            Size = UDim2.new(0, 0, 0, YSize);
-            ClipsDescendants = true;
-            ZIndex = 100;
-            Parent = Library.NotificationArea;
+    local WatermarkInner = Library:Create('Frame', {
+        BackgroundColor3 = Library.MainColor;
+        BorderColor3 = Library.AccentColor;
+        BorderMode = Enum.BorderMode.Inset;
+        Size = UDim2.new(1, 0, 1, 0);
+        ZIndex = 201;
+        Parent = WatermarkOuter;
+    });
+    Library:AddToRegistry(WatermarkInner, {
+        BorderColor3 = 'AccentColor';
+    });
+    local InnerFrame = Library:Create('Frame', {
+        BackgroundColor3 = Color3.new(1, 1, 1);
+        BorderSizePixel = 0;
+        Position = UDim2.new(0, 1, 0, 1);
+        Size = UDim2.new(1, -2, 1, -2);
+        ZIndex = 202;
+        Parent = WatermarkInner;
+    });
+    local Gradient = Library:Create('UIGradient', {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+            ColorSequenceKeypoint.new(1, Library.MainColor),
         });
-        local NotifyInner = Library:Create('Frame', {
-            BackgroundColor3 = Library.MainColor;
-            BorderColor3 = Library.OutlineColor;
-            BorderMode = Enum.BorderMode.Inset;
-            Size = UDim2.new(1, 0, 1, 0);
-            ZIndex = 101;
-            Parent = NotifyOuter;
-        });
-        Library:AddToRegistry(NotifyInner, {
-            BackgroundColor3 = 'MainColor';
-            BorderColor3 = 'OutlineColor';
-        }, true);
-        local InnerFrame = Library:Create('Frame', {
-            BackgroundColor3 = Color3.new(1, 1, 1);
-            BorderSizePixel = 0;
-            Position = UDim2.new(0, innerPosX, 0, innerPosY);
-            Size     = UDim2.new(1, innerSizeW, 1, innerSizeH);
-            ZIndex = 102;
-            Parent = NotifyInner;
-        });
-        local Gradient = Library:Create('UIGradient', {
-            Color = ColorSequence.new({
+        Rotation = -90;
+        Parent = InnerFrame;
+    });
+    Library:AddToRegistry(Gradient, {
+        Color = function()
+            return ColorSequence.new({
                 ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
                 ColorSequenceKeypoint.new(1, Library.MainColor),
             });
-            Rotation = -90;
-            Parent = InnerFrame;
-        });
-        Library:AddToRegistry(Gradient, {
-            Color = function()
-                return ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
-                    ColorSequenceKeypoint.new(1, Library.MainColor),
-                });
-            end
-        });
-        local NotifyLabel = Library:CreateLabel({
-            Position = UDim2.new(0, labelPosX, 0, 0);
-            Size     = UDim2.new(1, labelSizeW, 1, 0);
-            Text     = Text;
-            TextXAlignment = (align == 'Center')
-                and Enum.TextXAlignment.Center
-                or  Enum.TextXAlignment.Left;
-            TextSize = Library.FontSize;
-            ZIndex   = 103;
-            Parent   = InnerFrame;
-        });
-        local AccentBar = Library:Create('Frame', {
-            BackgroundColor3 = Library.AccentColor;
-            BorderSizePixel  = 0;
-            ZIndex           = 104;
-            Parent           = NotifyOuter;
-        });
-        if barSide == 'Left' then
-            AccentBar.Position = UDim2.new(0, -1, 0, -1)
-            AccentBar.Size     = UDim2.new(0, BAR_THIN, 1, 2)
-        elseif barSide == 'Right' then
-            AccentBar.Position = UDim2.new(1, -BAR_THIN + 1, 0, -1)
-            AccentBar.Size     = UDim2.new(0, BAR_THIN, 1, 2)
-        elseif barSide == 'Top' then
-            AccentBar.Position = UDim2.new(0, -1, 0, -1)
-            AccentBar.Size     = UDim2.new(1, 2, 0, BAR_THICK)
-        elseif barSide == 'Bottom' then
-            AccentBar.Position = UDim2.new(0, -1, 1, -BAR_THICK + 1)
-            AccentBar.Size     = UDim2.new(1, 2, 0, BAR_THICK)
         end
+    });
+    local WatermarkLabel = Library:CreateLabel({
+        Position = UDim2.new(0, 5, 0, 0);
+        Size = UDim2.new(1, -4, 1, 0);
+        TextSize = Library.FontSize;
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex = 203;
+        Parent = InnerFrame;
+    });
+    Library.Watermark = WatermarkOuter;
+    Library.WatermarkText = WatermarkLabel;
+    Library:MakeDraggable(Library.Watermark);
 
-        Library:AddToRegistry(AccentBar, {
-            BackgroundColor3 = 'AccentColor';
-        }, true);
-        local finalWidth = XSize + 8 + 4
-        if barSide == 'Left' or barSide == 'Right' then
-            finalWidth = finalWidth + BAR_THIN
+    local KeybindOuter = Library:Create('Frame', {
+        AnchorPoint = Vector2.new(0, 0.5);
+        BorderColor3 = Color3.new(0, 0, 0);
+        Position = UDim2.new(0, 10, 0.5, 0);
+        Size = UDim2.new(0, 210, 0, 20);
+        Visible = false;
+        ZIndex = 100;
+        Parent = ScreenGui;
+    });
+    Library:ApplyGlow(KeybindOuter);
+
+    local KeybindInner = Library:Create('Frame', {
+        BackgroundColor3 = Library.MainColor;
+        BorderColor3 = Library.OutlineColor;
+        BorderMode = Enum.BorderMode.Inset;
+        Size = UDim2.new(1, 0, 1, 0);
+        ZIndex = 101;
+        Parent = KeybindOuter;
+    });
+    Library:AddToRegistry(KeybindInner, {
+        BackgroundColor3 = 'MainColor';
+        BorderColor3 = 'OutlineColor';
+    }, true);
+    local ColorFrame = Library:Create('Frame', {
+        BackgroundColor3 = Library.AccentColor;
+        BorderSizePixel = 0;
+        Size = UDim2.new(1, 0, 0, 2);
+        ZIndex = 102;
+        Parent = KeybindInner;
+    });
+    Library:AddToRegistry(ColorFrame, {
+        BackgroundColor3 = 'AccentColor';
+    }, true);
+    local KeybindLabel = Library:CreateLabel({
+        Size = UDim2.new(1, 0, 0, 20);
+        Position = UDim2.fromOffset(5, 2),
+        TextXAlignment = Enum.TextXAlignment.Left,
+
+        Text = 'Keybinds';
+        ZIndex = 104;
+        Parent = KeybindInner;
+    });
+    local KeybindContainer = Library:Create('Frame', {
+        BackgroundTransparency = 1;
+        Size = UDim2.new(1, 0, 1, -20);
+        Position = UDim2.new(0, 0, 0, 20);
+        ZIndex = 1;
+        Parent = KeybindInner;
+    });
+    Library:Create('UIListLayout', {
+        FillDirection = Enum.FillDirection.Vertical;
+        SortOrder = Enum.SortOrder.LayoutOrder;
+        Parent = KeybindContainer;
+    });
+    Library:Create('UIPadding', {
+        PaddingLeft = UDim.new(0, 5),
+        Parent = KeybindContainer,
+    })
+
+    Library.KeybindFrame = KeybindOuter;
+    Library.KeybindContainer = KeybindContainer;
+    Library:MakeDraggable(KeybindOuter);
+end;
+
+function Library:SetKeybindMode(Mode)
+    assert(Mode == 'All' or Mode == 'Active' or Mode == 'Toggled',
+        "SetKeybindMode: Mode must be 'All', 'Active', or 'Toggled'")
+    Library.KeybindMode = Mode
+    Library:RefreshKeybinds()
+end
+
+function Library:RefreshKeybinds()
+    for _, kp in ipairs(Library.KeyPickerList) do
+        if not kp.NoUI then
+            pcall(function() kp:Update() end)
         end
-        pcall(NotifyOuter.TweenSize, NotifyOuter,
-            UDim2.new(0, finalWidth, 0, YSize), 'Out', 'Quad', 0.4, true);
-        task.spawn(function()
-            wait(Time or 5);
-            pcall(NotifyOuter.TweenSize, NotifyOuter,
-                UDim2.new(0, 0, 0, YSize), 'Out', 'Quad', 0.4, true);
-            wait(0.4);
-            NotifyOuter:Destroy();
-        end);
     end
 end
+
+function Library:SetWatermarkVisibility(Bool)
+    Library.Watermark.Visible = Bool;
+end;
+
+function Library:SetWatermark(Text)
+    local X, Y = Library:GetTextBounds(Text, Library.Font, Library.FontSize);
+    Library.Watermark.Size = UDim2.new(0, X + 15, 0, (Y * 1.5) + 3);
+    Library:SetWatermarkVisibility(true)
+
+    Library.WatermarkText.Text = Text;
+end;
+function Library:Notify(Text, Time)
+    local cfg     = Library.NotifyConfig
+    local barSide = cfg.BarSide   or 'Left'    
+    local align   = cfg.Alignment or 'Left'    
+
+    local XSize, YSize = Library:GetTextBounds(Text, Library.Font, Library.FontSize)
+    YSize = YSize + 7
+
+    local BAR_THIN  = 3   
+    local BAR_THICK = 3   
+
+    local innerPosX  = (barSide == 'Left')   and 1 or 1
+    local innerPosY  = (barSide == 'Top')    and BAR_THICK or 1
+    local innerSizeW = (barSide == 'Left' or barSide == 'Right') and -2 or -2
+    local innerSizeH = (barSide == 'Top' or barSide == 'Bottom') and -(BAR_THICK + 1) or -2
+
+    local labelPosX  = (barSide == 'Left')  and BAR_THIN + 2 or 4
+    local labelSizeW = (barSide == 'Left' or barSide == 'Right') and -(BAR_THIN + 4) or -4
+
+    local outerAnchor = Vector2.new(0, 0)
+    local outerPosX   = 0
+    if align == 'Center' then
+        outerAnchor = Vector2.new(0.5, 0)
+        outerPosX   = 0  
+    elseif align == 'Right' then
+        outerAnchor = Vector2.new(1, 0)
+        outerPosX   = 0
+    end
+
+    local NotifyOuter = Library:Create('Frame', {
+        BackgroundTransparency = 1;
+        AnchorPoint = outerAnchor;
+        BorderColor3 = Color3.new(0, 0, 0);
+        Position     = (align == 'Center')
+            and UDim2.new(0.5, 0, 0, 0)
+            or  (align == 'Right' and UDim2.new(1, 0, 0, 0) or UDim2.new(0, 0, 0, 0));
+        Size = UDim2.new(0, 0, 0, YSize);
+        ClipsDescendants = true;
+        ZIndex = 100;
+        Parent = Library.NotificationArea;
+    });
+    local NotifyInner = Library:Create('Frame', {
+        BackgroundColor3 = Library.MainColor;
+        BorderColor3 = Library.OutlineColor;
+        BorderMode = Enum.BorderMode.Inset;
+        Size = UDim2.new(1, 0, 1, 0);
+        ZIndex = 101;
+        Parent = NotifyOuter;
+    });
+    Library:AddToRegistry(NotifyInner, {
+        BackgroundColor3 = 'MainColor';
+        BorderColor3 = 'OutlineColor';
+    }, true);
+    local InnerFrame = Library:Create('Frame', {
+        BackgroundColor3 = Color3.new(1, 1, 1);
+        BorderSizePixel = 0;
+        Position = UDim2.new(0, innerPosX, 0, innerPosY);
+        Size     = UDim2.new(1, innerSizeW, 1, innerSizeH);
+        ZIndex = 102;
+        Parent = NotifyInner;
+    });
+    local Gradient = Library:Create('UIGradient', {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+            ColorSequenceKeypoint.new(1, Library.MainColor),
+        });
+        Rotation = -90;
+        Parent = InnerFrame;
+    });
+    Library:AddToRegistry(Gradient, {
+        Color = function()
+            return ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+                ColorSequenceKeypoint.new(1, Library.MainColor),
+            });
+        end
+    });
+    local NotifyLabel = Library:CreateLabel({
+        Position = UDim2.new(0, labelPosX, 0, 0);
+        Size     = UDim2.new(1, labelSizeW, 1, 0);
+        Text     = Text;
+        TextXAlignment = (align == 'Center')
+            and Enum.TextXAlignment.Center
+            or  Enum.TextXAlignment.Left;
+        TextSize = Library.FontSize;
+        ZIndex   = 103;
+        Parent   = InnerFrame;
+    });
+    local AccentBar = Library:Create('Frame', {
+        BackgroundColor3 = Library.AccentColor;
+        BorderSizePixel  = 0;
+        ZIndex           = 104;
+        Parent           = NotifyOuter;
+    });
+    if barSide == 'Left' then
+        AccentBar.Position = UDim2.new(0, -1, 0, -1)
+        AccentBar.Size     = UDim2.new(0, BAR_THIN, 1, 2)
+    elseif barSide == 'Right' then
+        AccentBar.Position = UDim2.new(1, -BAR_THIN + 1, 0, -1)
+        AccentBar.Size     = UDim2.new(0, BAR_THIN, 1, 2)
+    elseif barSide == 'Top' then
+        AccentBar.Position = UDim2.new(0, -1, 0, -1)
+        AccentBar.Size     = UDim2.new(1, 2, 0, BAR_THICK)
+    elseif barSide == 'Bottom' then
+        AccentBar.Position = UDim2.new(0, -1, 1, -BAR_THICK + 1)
+        AccentBar.Size     = UDim2.new(1, 2, 0, BAR_THICK)
+    end
+
+    Library:AddToRegistry(AccentBar, {
+        BackgroundColor3 = 'AccentColor';
+    }, true);
+    local finalWidth = XSize + 8 + 4
+    if barSide == 'Left' or barSide == 'Right' then
+        finalWidth = finalWidth + BAR_THIN
+    end
+    pcall(NotifyOuter.TweenSize, NotifyOuter,
+        UDim2.new(0, finalWidth, 0, YSize), 'Out', 'Quad', 0.4, true);
+    task.spawn(function()
+        wait(Time or 5);
+        pcall(NotifyOuter.TweenSize, NotifyOuter,
+            UDim2.new(0, 0, 0, YSize), 'Out', 'Quad', 0.4, true);
+        wait(0.4);
+        NotifyOuter:Destroy();
+    end);
+end;
 
 function Library:CreateWindow(...)
     local Arguments = { ... }
@@ -3219,71 +3357,6 @@ function Library:CreateWindow(...)
     Library:AddToRegistry(CornerCircle, {
         BackgroundColor3 = 'AccentColor';
     });
-
-    local ResizeWireframe = nil;
-    local ResizeStartPos = nil;
-    local ResizeStartSize = nil;
-    local IsResizing = false;
-
-    local function UpdateResizeWireframe(delta)
-        if not ResizeWireframe then
-            ResizeWireframe = Library:Create("Frame", {
-                Size = Outer.Size,
-                Position = Outer.Position,
-                AnchorPoint = Outer.AnchorPoint,
-                BackgroundTransparency = 1,
-                Active = false,
-                ZIndex = 100000,
-                Parent = ScreenGui,
-            });
-            local stroke = Library:Create("UIStroke", {
-                Color = Library.AccentColor,
-                Thickness = 1,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-                Parent = ResizeWireframe,
-            });
-            Library:AddToRegistry(stroke, { Color = 'AccentColor' });
-        end
-
-        local newSize = UDim2.new(
-            ResizeStartSize.X.Scale,
-            math.max(200, ResizeStartSize.X.Offset + delta.X),
-            ResizeStartSize.Y.Scale,
-            math.max(150, ResizeStartSize.Y.Offset + delta.Y)
-        );
-        ResizeWireframe.Size = newSize;
-        ResizeWireframe.Position = Outer.Position;
-    end
-
-    CornerCircle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if not Library.Toggled then return end
-            IsResizing = true;
-            ResizeStartPos = input.Position;
-            ResizeStartSize = Outer.Size;
-            UpdateResizeWireframe(Vector2.new(0, 0));
-        end
-    end);
-
-    InputService.InputChanged:Connect(function(input)
-        if IsResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input == CornerCircle.InputBegan) then
-            local delta = input.Position - ResizeStartPos;
-            UpdateResizeWireframe(delta);
-        end
-    end);
-
-    InputService.InputEnded:Connect(function(input)
-        if IsResizing and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            IsResizing = false;
-            if ResizeWireframe then
-                Outer.Size = ResizeWireframe.Size;
-                ResizeWireframe:Destroy();
-                ResizeWireframe = nil;
-                Library:AttemptSave();
-            end
-        end
-    end);
-
     function Window:SetWindowTitle(Title)
         WindowLabel.Text = Title;
     end;
@@ -3856,6 +3929,8 @@ if InputService.TouchEnabled then
     local ToggleOuter, ToggleBtn = CreateMobileButton("Toggle", "Toggle UI",  UDim2.new(0, 10, 0, 10))
     local LockOuter,   LockBtn  = CreateMobileButton("Lock",   "Unlock UI",  UDim2.new(0, 10, 0, 10 + BTN_H + (BTN_GAP - BTN_H)))
 
+    local IsUnlocked = false
+
     local function BindMobileButtonAction(Btn, Outer, ClickAction)
         local dragging  = false
         local dragInput = nil
@@ -3874,7 +3949,7 @@ if InputService.TouchEnabled then
 
                 local connection
                 connection = input.Changed:Connect(function()
-                    if input.UserInputState == Enum.InputUserState.End then
+                    if input.UserInputState == Enum.UserInputState.End then
                         dragging = false
                         connection:Disconnect()
                         if not hasMoved then
@@ -3891,7 +3966,7 @@ if InputService.TouchEnabled then
                 if delta.Magnitude > 3 then
                     hasMoved = true
                 end
-                if _G.UIUnlocked and hasMoved then
+                if IsUnlocked and hasMoved then
                     Outer.Position = UDim2.new(
                         startPos.X.Scale, startPos.X.Offset + delta.X,
                         startPos.Y.Scale, startPos.Y.Offset + delta.Y
@@ -3906,9 +3981,11 @@ if InputService.TouchEnabled then
     end)
 
     BindMobileButtonAction(LockBtn, LockOuter, function()
-        _G.UIUnlocked = not _G.UIUnlocked
-        LockBtn.Text = _G.UIUnlocked and "Lock UI" or "Unlock UI"
-        LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        IsUnlocked = not IsUnlocked
+        LockBtn.Text = IsUnlocked and "Lock UI" or "Unlock UI"
+        LockBtn.TextColor3 = IsUnlocked
+            and Library.AccentColor
+            or  Color3.fromRGB(255, 255, 255)
     end)
 
     local _origUpdate = Library.UpdateColorsUsingRegistry
@@ -3918,208 +3995,4 @@ if InputService.TouchEnabled then
 end
 
 getgenv().Library = Library
--- Конец второго скрипта
-
--- ================================================================
--- Третий скрипт: пользовательский интерфейс (адаптирован под Linoria)
--- ================================================================
-
-while not game:IsLoaded() do task.wait(0.1) end
-
-local bc = Library  -- используем библиотеку Linoria
-
-local dc = bc:CreateWindow({
-    Title = 'creep.cc',
-    Center = true,
-    AutoShow = true,
-    TabPadding = 8,
-    MenuFadeTime = 0.2,
-})
-
-local ch = {
-    Aiming     = dc:AddTab('Aiming'),
-    Triggerbot = dc:AddTab('Triggerbot'),
-    Visuals    = dc:AddTab('Visuals'),
-    Performance= dc:AddTab('Performance'),
-    Skin       = dc:AddTab('Skin'),
-    Misc       = dc:AddTab('Misc'),
-    ['Ui']     = dc:AddTab('Ui'),
-}
-
-local q = ch.Aiming:AddLeftGroupbox('Aimbot')
-local o = ch.Aiming:AddRightGroupbox('Settings')
-
-q:AddToggle('AimbotEnabled',   { Text = 'Enabled',    Default = false, Callback = function() end })
- :AddKeyPicker('AimbotKey',    { Default = 'None', Mode = 'Hold', Text = 'Aimbot', NoUI = false, Callback = function() end, ChangedCallback = function() end })
-q:AddToggle('AimbotWallcheck', { Text = 'Wallcheck',  Default = false, Callback = function() end })
-q:AddToggle('AimbotPrediction',{ Text = 'Prediction', Default = false, Callback = function() end })
-q:AddToggle('AimbotSticky',    { Text = 'Sticky Aim', Default = false, Callback = function() end })
-q:AddToggle('FOVEnabled',      { Text = 'FOV',        Default = false, Callback = function() end })
-q:AddToggle('TeamCheck',       { Text = 'Team Check', Default = false, Callback = function() end })
-q:AddDropdown('AimbotBone', {
-    Text = 'Target Bone', Default = 1, Multi = true,
-    Values = { 'Head','UpperTorso','LowerTorso','LeftUpperArm','LeftLowerArm','LeftHand','RightUpperArm','RightLowerArm','RightHand','LeftUpperLeg','LeftLowerLeg','LeftFoot','RightUpperLeg','RightLowerLeg','RightFoot' },
-    Callback = function() end,
-})
-
-o:AddSlider('AimbotFOV',            { Text = 'FOV',             Default = 120, Min = 30,  Max = 500,  Rounding = 0, Suffix = ' px',    Callback = function() end })
-o:AddSlider('AimbotSmoothing',      { Text = 'Smoothing',       Default = 15,  Min = 1,   Max = 100,  Rounding = 0,                    Callback = function() end })
-o:AddSlider('AimbotSensitivityify', { Text = 'Sensitivity',     Default = 1,   Min = 0.1, Max = 2,    Rounding = 1,                    Callback = function() end })
-o:AddSlider('AimbotMaxDistance',    { Text = 'Max Distance',    Default = 300, Min = 50,  Max = 1000, Rounding = 0, Suffix = ' studs', Callback = function() end })
-o:AddSlider('AimbotPredictScale',   { Text = 'Predict Strength',Default = 8,   Min = 1,   Max = 30,   Rounding = 0,                    Callback = function() end })
-o:AddLabel('FOV Outline Color 1'):AddColorPicker('FOVColor',   { Default = Color3.new(1,1,1),         Callback = function() end })
-o:AddLabel('FOV Outline Color 2'):AddColorPicker('FOVColor2',  { Default = Color3.fromRGB(0,200,255), Callback = function() end })
-o:AddSlider('FOVThickness',         { Text = 'FOV Thickness',   Default = 2,  Min = 1, Max = 10,  Rounding = 0, Callback = function() end })
-o:AddSlider('FOVTransparency',      { Text = 'FOV Transp',      Default = 85, Min = 0, Max = 100, Rounding = 0, Callback = function() end })
-o:AddToggle('FOVFilled',            { Text = 'FOV Filled',      Default = false, Callback = function() end })
-o:AddLabel('FOV Fill Color 1'):AddColorPicker('FOVFillColor',  { Default = Color3.fromRGB(0,200,255), Callback = function() end })
-o:AddLabel('FOV Fill Color 2'):AddColorPicker('FOVFillColor2', { Default = Color3.fromRGB(0,90,255),  Callback = function() end })
-o:AddSlider('FOVFillTransp',        { Text = 'FOV Fill Transp', Default = 85, Min = 0, Max = 100, Rounding = 0, Callback = function() end })
-o:AddSlider('FOVSpinSpeed',         { Text = 'FOV Spin Speed',  Default = 1,  Min = 0.1, Max = 10, Rounding = 1, Callback = function() end })
-
-local ck = ch.Triggerbot:AddLeftGroupbox('Triggerbot')
-local cj = ch.Triggerbot:AddRightGroupbox('Settings')
-
-ck:AddToggle('TriggerbotEnabled',    { Text = 'Enabled',     Default = false, Callback = function() end })
-  :AddKeyPicker('TriggerbotKey',     { Default = 'None', Mode = 'Hold', Text = 'Triggerbot', NoUI = false, Callback = function() end, ChangedCallback = function() end })
-ck:AddToggle('TriggerbotFOVEnabled', { Text = 'FOV',         Default = false, Callback = function() end })
-ck:AddToggle('TriggerbotScopeCheck', { Text = 'Scope Check', Default = false, Callback = function() end })
-ck:AddToggle('KatanaCheck',          { Text = 'Anti Katana', Default = false, Callback = function() end })
-ck:AddDropdown('TriggerbotBone', {
-    Text = 'Hitbox', Default = 1, Multi = true,
-    Values = { 'Head','UpperTorso','LowerTorso','LeftUpperArm','LeftLowerArm','LeftHand','RightUpperArm','RightLowerArm','RightHand','LeftUpperLeg','LeftLowerLeg','LeftFoot','RightUpperLeg','RightLowerLeg','RightFoot' },
-    Callback = function() end,
-})
-
-cj:AddSlider('TriggerbotRadius',         { Text = 'Radius',      Default = 25,  Min = 1,   Max = 100, Rounding = 0, Suffix = ' px', Callback = function() end })
-cj:AddSlider('TriggerbotMinDelay',       { Text = 'Min Delay',   Default = 50,  Min = 0,   Max = 500, Rounding = 0, Suffix = ' ms', Callback = function() end })
-cj:AddSlider('TriggerbotMaxDelay',       { Text = 'Max Delay',   Default = 120, Min = 0,   Max = 500, Rounding = 0, Suffix = ' ms', Callback = function() end })
-cj:AddSlider('TriggerbotClickHold',      { Text = 'Base Delay',  Default = 30,  Min = 10,  Max = 150, Rounding = 0, Suffix = ' ms', Callback = function() end })
-cj:AddLabel('FOV Outline 1'):AddColorPicker('TriggerbotFOVColor',  { Default = Color3.new(1,0,0),           Callback = function() end })
-cj:AddLabel('FOV Outline 2'):AddColorPicker('TriggerbotFOVColor2', { Default = Color3.fromRGB(255,120,120), Callback = function() end })
-cj:AddSlider('TriggerbotFOVThickness',   { Text = 'FOV Thickness',Default = 2,  Min = 1, Max = 10,  Rounding = 0, Callback = function() end })
-cj:AddSlider('TriggerbotFOVTransparency',{ Text = 'FOV Transp',   Default = 50, Min = 0, Max = 100, Rounding = 0, Callback = function() end })
-cj:AddToggle('TriggerbotFOVFilled',      { Text = 'FOV Filled',   Default = false, Callback = function() end })
-cj:AddLabel('FOV Fill 1'):AddColorPicker('TriggerbotFOVFillColor',  { Default = Color3.fromRGB(255,0,0), Callback = function() end })
-cj:AddLabel('FOV Fill 2'):AddColorPicker('TriggerbotFOVFillColor2', { Default = Color3.fromRGB(120,0,0), Callback = function() end })
-cj:AddSlider('TriggerbotFOVFillTransp',  { Text = 'FOV Fill Transp',Default = 60, Min = 0, Max = 100, Rounding = 0, Callback = function() end })
-cj:AddSlider('TriggerbotFOVSpinSpeed',   { Text = 'FOV Spin Speed', Default = 1, Min = 0.1, Max = 10, Rounding = 1, Callback = function() end })
-
-local ag = ch.Visuals:AddLeftGroupbox('ESP')
-local ah = ch.Visuals:AddRightGroupbox('Settings')
-
-ag:AddToggle('ESPEnabled',      { Text = 'ESP Enabled',    Default = false, Callback = function() end })
-ag:AddToggle('ESPBox',          { Text = 'Box',            Default = false, Callback = function() end })
-ag:AddToggle('ESPCornerBox',    { Text = 'Corner Box',     Default = false, Callback = function() end })
-ag:AddToggle('ESPFilled',       { Text = 'Filled Box',     Default = false, Callback = function() end })
-ag:AddToggle('ESPDistance',     { Text = 'Distance',       Default = false, Callback = function() end })
-ag:AddToggle('ESPSkeleton',     { Text = 'Skeleton',       Default = false, Callback = function() end })
-ag:AddToggle('ShowFriendlyESP', { Text = 'Show Friendlies',Default = false, Callback = function() end })
-ag:AddDropdown('ESPAnimMode', {
-    Text = 'Animation Mode', Default = 'Spinning Gradient',
-    Values = { 'Static','Rainbow','Spinning Gradient','Pulse' },
-    Callback = function() end,
-})
-ag:AddSlider('ESPAnimSpeed', { Text = 'Animation Speed', Default = 1, Min = 0.1, Max = 10, Rounding = 1, Callback = function() end })
-
-ah:AddSlider('ESPMaxDistance',       { Text = 'Max Distance',   Default = 300, Min = 50, Max = 1000, Rounding = 0, Suffix = ' studs', Callback = function() end })
-ah:AddSlider('ESPBoxThickness',      { Text = 'Box Thickness',  Default = 1,   Min = 1,  Max = 5,    Rounding = 0,                    Callback = function() end })
-ah:AddSlider('ESPSkeletonThickness', { Text = 'Skeleton Thick', Default = 1,   Min = 1,  Max = 5,    Rounding = 0,                    Callback = function() end })
-ah:AddSlider('ESPFillTransp',        { Text = 'Fill Transp',    Default = 70,  Min = 0,  Max = 100,  Rounding = 0,                    Callback = function() end })
-ah:AddLabel('Visible Color'):AddColorPicker('ESPVisibleColor',     { Default = Color3.new(0,1,0),          Callback = function() end })
-ah:AddLabel('Hidden Color'):AddColorPicker('ESPInvisibleColor',    { Default = Color3.new(1,0,0),          Callback = function() end })
-ah:AddLabel('Distance Color'):AddColorPicker('ESPDistanceColor',   { Default = Color3.new(1,1,1),          Callback = function() end })
-ah:AddLabel('Gradient Color 2'):AddColorPicker('ESPGradientColor2',{ Default = Color3.fromRGB(0,200,255),  Callback = function() end })
-
-local cz = ch.Visuals:AddRightGroupbox('Weapon Chams')
-cz:AddToggle('WeaponChamsEnabled', { Text = 'Enabled', Default = false, Callback = function() end })
-cz:AddDropdown('WeaponChamsMaterial', {
-    Text = 'Material', Default = 'ForceField',
-    Values = { 'ForceField','Neon','Glass','SmoothPlastic','Metal','Wood','Marble','Granite','Brick','Cobblestone' },
-    Callback = function() end,
-})
-cz:AddSlider('WeaponChamsTransparency', { Text = 'Transparency', Default = 0, Min = 0, Max = 100, Rounding = 0, Suffix = '%', Callback = function() end })
-cz:AddLabel('Color'):AddColorPicker('WeaponChamsColor', { Default = Color3.new(1,1,1), Callback = function() end })
-
-local ax = ch.Visuals:AddLeftGroupbox('Bullet Tracers')
-ax:AddToggle('HitTracersEnabled', { Text = 'Enabled', Default = false, Callback = function() end })
-ax:AddLabel('Color'):AddColorPicker('HitTracerColor', { Default = Color3.fromRGB(0,255,255), Callback = function() end })
-ax:AddSlider('HitTracerThickness', { Text = 'Thickness', Default = 8,  Min = 1, Max = 50,  Rounding = 0, Callback = function() end })
-ax:AddSlider('HitTracerLifetime',  { Text = 'Lifetime',  Default = 75, Min = 10,Max = 500, Rounding = 0, Suffix = ' ms', Callback = function() end })
-ax:AddSlider('HitTracerFadeIn',    { Text = 'Fade In',   Default = 5,  Min = 0, Max = 200, Rounding = 0, Suffix = ' ms', Callback = function() end })
-ax:AddSlider('HitTracerFadeOut',   { Text = 'Fade Out',  Default = 35, Min = 0, Max = 300, Rounding = 0, Suffix = ' ms', Callback = function() end })
-
-local ct = ch.Visuals:AddLeftGroupbox('Utility ESP')
-ct:AddToggle('UtilityESPEnabled', { Text = 'Enabled', Default = false, Callback = function() end })
-ct:AddToggle('UtilityESPName',    { Text = 'Name',    Default = true,  Callback = function() end })
-ct:AddToggle('UtilityESPGlow',    { Text = 'Glow',    Default = true,  Callback = function() end })
-ct:AddLabel('Color'):AddColorPicker('UtilityESPColor', { Default = Color3.fromRGB(0,255,120), Callback = function() end })
-
-local be = ch.Visuals:AddLeftGroupbox('Lighting Changer')
-be:AddToggle('LightingChangerEnabled', { Text = 'Enabled',    Default = false, Callback = function() end })
-be:AddSlider('LightingBrightness',     { Text = 'Brightness', Default = 2,  Min = 0,  Max = 10, Rounding = 1, Callback = function() end })
-be:AddSlider('LightingClockTime',      { Text = 'Time',       Default = 14, Min = 0,  Max = 24, Rounding = 1, Callback = function() end })
-be:AddSlider('LightingExposure',       { Text = 'Exposure',   Default = 0,  Min = -5, Max = 5,  Rounding = 1, Callback = function() end })
-be:AddLabel('Ambient'):AddColorPicker('LightingAmbient',               { Default = Color3.fromRGB(128,128,128), Callback = function() end })
-be:AddLabel('Outdoor Ambient'):AddColorPicker('LightingOutdoorAmbient',{ Default = Color3.fromRGB(128,128,128), Callback = function() end })
-be:AddLabel('Color Shift Top'):AddColorPicker('LightingColorShiftTop',    { Default = Color3.new(0,0,0), Callback = function() end })
-be:AddLabel('Color Shift Bottom'):AddColorPicker('LightingColorShiftBottom',{ Default = Color3.new(0,0,0), Callback = function() end })
-
-local ca = ch.Visuals:AddRightGroupbox('Skybox Changer')
-ca:AddDropdown('SkyboxSelection', {
-    Text = 'Skybox', Default = 1,
-    Values = { "Minecraft","Dreaming","Space","Cartoony","Night","Pink","Red","Purple","Milkyway","Galaxy","Anime" },
-    Callback = function() end,
-})
-
-local bn = ch.Performance:AddLeftGroupbox('Performance')
-bn:AddSlider('RaycastUpdateRate', {
-    Text = 'Raycast Delay', Default = 50, Min = 0, Max = 500, Rounding = 0,
-    Suffix = ' ms', Tooltip = '(higher = better FPS, lower = more accurate)',
-    Callback = function() end,
-})
-
-local by = ch.Skin:AddLeftGroupbox('Skin Changer')
-by:AddToggle('UseUnlockAll',  { Text = 'Use Unlock All', Default = false, Callback = function() end })
-by:AddDropdown('SkinCategory',{
-    Text = 'Category', Default = 1,
-    Values = { 'assault_rifle','sniper_rifle','shotgun','pistol','launcher','heavy','grenades','utility','melee' },
-    Callback = function() end,
-})
-by:AddDropdown('SkinWeapon',  { Text = 'Weapon', Default = 1, Values = { 'ak47' }, Callback = function() end })
-by:AddDropdown('SkinName',    { Text = 'Skin',   Default = 1, Values = { '' },     Callback = function() end })
-by:AddButton('Apply Skin', function() end)
-
-local bk = ch.Misc:AddLeftGroupbox('Hitsounds')
-local soundList = { 'Normal','Neverlose','Gamesense','Fatality','Splash','Thonk','Cowbell','Slap','Tung','Hit','Ding','Chicken','Moan','Girl','Cat Girl','Tiki Tiki','Jew','Fart','Bubble','Tf2','Cs2','Mambo','Toma','Kirk','Plastic','Lego','67' }
-bk:AddDropdown('HitSoundHead',    { Text = 'Head',        Default = 'Normal', Values = soundList, Callback = function() end })
-bk:AddSlider('HitSoundHeadVolume',{ Text = 'Head Volume', Default = 1, Min = 0, Max = 10, Rounding = 1, Callback = function() end })
-bk:AddDropdown('HitSoundBody',    { Text = 'Body',        Default = 'Normal', Values = soundList, Callback = function() end })
-bk:AddSlider('HitSoundBodyVolume',{ Text = 'Body Volume', Default = 1, Min = 0, Max = 10, Rounding = 1, Callback = function() end })
-bk:AddDropdown('HitSoundKill',    { Text = 'Kill',        Default = 'Normal', Values = soundList, Callback = function() end })
-bk:AddSlider('HitSoundKillVolume',{ Text = 'Kill Volume', Default = 1, Min = 0, Max = 10, Rounding = 1, Callback = function() end })
-
-local ay_group = ch.Misc:AddLeftGroupbox('Dummy Settings')
-ay_group:AddToggle('AllowDummys', { Text = 'Allow Dummys', Default = false, Callback = function() end })
-
-local bj = ch['Ui']:AddLeftGroupbox('Menu')
-bj:AddButton('Unload', function() bc:Unload() end)
-bj:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'RightShift', NoUI = true, Text = 'Menu keybind' })
-bj:AddToggle('ShowKeybinds', { Text = 'Show Keybinds', Default = false, Callback = function(v) bc.KeybindFrame.Visible = v end })
-bj:AddToggle('ShowWatermark',{ Text = 'Show Watermark', Default = true,  Callback = function(v) end }) -- игнорируем
-
--- Настройка клавиши открытия меню
-bc.ToggleKeybind = Options.MenuKeybind
-
--- Скрываем фрейм кейбиндов по умолчанию
-bc.KeybindFrame.Visible = false
-
--- Обработка выгрузки
-bc:OnUnload(function()
-    bc.Unloaded = true
-end)
-
--- Возвращаем функцию для выгрузки
-return function()
-    bc:Unload()
-end
+return Library
