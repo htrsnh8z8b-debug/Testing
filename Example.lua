@@ -7,7 +7,7 @@ local ci = loadstring(game:HttpGet('https://raw.githubusercontent.com/htrsnh8z8b
 local bx = loadstring(game:HttpGet('https://raw.githubusercontent.com/htrsnh8z8b-debug/Testing/refs/heads/main/Settings.lua'))()
 
 local dc = bc:CreateWindow({
-    Title = 'creep.cc',
+    Title = 'MONOFLUX - test nigga',
     Center = true,
     AutoShow = true,
     TabPadding = 8,
@@ -199,7 +199,7 @@ ci:ApplyTheme('Logic')
 bc.ToggleKeybind = Options.MenuKeybind
 bc.KeybindFrame.Visible = false
 bc:SetWatermarkVisibility(true)
-bc:SetWatermark('creep.cc')
+bc:SetWatermark('niggaware')
 bc:OnUnload(function()
     bc.Unloaded = true
 end)
