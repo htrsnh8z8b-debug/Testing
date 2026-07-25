@@ -4,7 +4,7 @@ local ac = (gethui and gethui()) or game:GetService("CoreGui")
 
 local bc = loadstring(game:HttpGet('https://raw.githubusercontent.com/htrsnh8z8b-debug/Testing/refs/heads/main/Source.lua'))()
 local ci = loadstring(game:HttpGet('https://github.com/htrsnh8z8b-debug/Testing/blob/main/ThemeManager.lua'))()
-local bx = loadstring(game:HttpGet('https://github.com/htrsnh8z8b-debug/Testing/blob/main/Settings.lua'))()
+local bx = loadstring(game:HttpGet('https://raw.githubusercontent.com/htrsnh8z8b-debug/Testing/refs/heads/main/Settings.lua'))()
 
 local dc = bc:CreateWindow({
     Title = 'creep.cc',
